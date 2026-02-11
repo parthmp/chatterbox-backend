@@ -1,0 +1,80 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker.dev/Dockerfile
+    container_name: chat-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGO_URI=mongodb://mongo:27017/chatdb
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - chat-network
+    command: npm run dev
+
+  mongo:
+    image: mongo:8.2.5-noble
+    container_name: chat-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=chatdb
+    networks:
+      - chat-network
+
+  redis:
+    image: redis:8.4-alpine
+    container_name: chat-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker.dev/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - chat-network
+
+  mongo-express:
+    image: mongo-express:1.0.2-20-alpine3.19
+    container_name: chat-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+    depends_on:
+      - mongo
+    networks:
+      - chat-network
+
+  redis-insight:
+    image: redis/redisinsight:3.0
+    container_name: chat-redis-insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis_insight_data:/data
+    depends_on:
+      - redis
+    networks:
+      - chat-network
+
+volumes:
+  mongo_data:
+  redis_data:
+  redis_insight_data:
+
+networks:
+  chat-network:
+    driver: bridge
